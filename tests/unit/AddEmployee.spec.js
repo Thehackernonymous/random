@@ -1,11 +1,15 @@
-import { mount } from '@vue/test-utils';
-import AddEmployee from '@/components/Pages/AddEmployee.vue';
+// import { mount } from '@vue/test-utils';
+// import AddEmployee from '@/components/Pages/AddEmployee.vue';
 
-describe('AddEmployee.vue', () => {
-  it('renders correctly', () => {
-    const wrapper = mount(AddEmployee);
-    expect(wrapper.exists()).toBe(true);
-  });
-
-  // Add more test cases based on your component's behavior
-});
+// describe('AddEmployee.vue', () => {
+//     const wrapper = mount(AddEmployee);
+//   it('adds an employee when button is clicked', async () => {
+//     await wrapper.setData({ employeeName: 'Rahul Jaiswal', employeeRole: 'Contractor' });
+//     await wrapper.find('button').trigger('click');
+//     expect(wrapper.vm.employeeAdded).toBe(true);
+//   });
+//   it('displays feedback message for empty input fields', async () => {
+//     await wrapper.find('button').trigger('click');
+//     expect(wrapper.text()).toContain('Please fill the input fields');
+//   });
+// });

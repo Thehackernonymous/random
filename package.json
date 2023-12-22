@@ -5,18 +5,25 @@
   "scripts": {
     "serve": "vue-cli-service serve",
     "build": "vue-cli-service build",
-    "test:unit": "vue-cli-service test:unit"
+    "test:unit": "vue-cli-service test:unit",
+    "cypress:open": "cypress open",
+    "cypress:run": "cypress run"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.4.2",
     "axios": "^1.5.1",
     "core-js": "^3.8.3",
+    "pg": "^8.11.3",
+    "sequelize": "^6.33.0",
     "vue": "^3.2.13",
     "vue-router": "^4.0.3",
     "vuex": "^4.0.0",
     "webfontloader": "^1.6.28"
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.23.2",
+    "@babel/preset-react": "^7.22.15",
+    "@jest/globals": "^29.7.0",
     "@vue/cli-plugin-babel": "~5.0.0",
     "@vue/cli-plugin-router": "~5.0.0",
     "@vue/cli-plugin-unit-jest": "~5.0.0",
@@ -24,7 +31,8 @@
     "@vue/cli-service": "~5.0.0",
     "@vue/test-utils": "^2.0.0-0",
     "@vue/vue3-jest": "^27.0.0-alpha.1",
-    "babel-jest": "^27.0.6",
+    "babel-jest": "^27.5.1",
+    "cypress": "^13.5.1",
     "jest": "^27.0.5",
     "vue-cli-plugin-vuetify": "~2.5.8"
   }

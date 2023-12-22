@@ -1,41 +1,35 @@
  <template>
   <div class="body-container">
     <AppHeader />
-    <div class="search-container">
-      <input
-        type="text"
-        v-model="searchQuery"
-        placeholder="Search"
-        class="search-input"
-      />
-      <i class="fas fa-search" @click="performSearch"></i>
-    </div>
-
     <div class="container">
       <h1>Add Task</h1>
+      <form @submit.prevent="addTask">
       <input
         type="text"
         v-model="taskName"
         placeholder="Enter Task"
         @keydown.enter="addTask"
         ref="taskInput"
+        required
+        class="input-box"
       />
-      <button @click="addTask">Add Task</button>
-      <p v-if="taskAdded" class="feedback">Task added successfully!</p>
+      <button type="submit">Add Task</button>
+      </form>
+      <p v-if="feedbackMessage" class="feedback">{{ feedbackMessage }}</p>
       <ul>
         <li
-          v-for="(task, index) in taskList"
+          v-for="(task, index) in filteredTasks"
           :key="index"
           :ref="task.id"
           @click="scrollToTask(task.id)"
         >
-        {{ task.id }} - {{ task.taskName }}
+        {{ task.id }} - {{ task.taskname }}
       </li>
       </ul>
     </div>
-
+    <!-- v-if="tasks.length > 0" -->
     <div class="table-container">
-      <table id="myTable" class="emptable table table-bordered">
+      <table id="myTable" class="emptable">
         <thead>
           <tr>
             <th >Task No.</th>
@@ -44,17 +38,40 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(task, index) in filteredTasks" :key="index">
+          <tr v-if="tasks.length === 0">
+            <td colspan="3">No data available</td>
+          </tr>
+          <tr v-for="task in tasks" :key="task.id">
             <td>{{ task.id }}</td>
             <td>{{ task.taskname }}</td>
             <td>
               <button @click="deleteTask(task.id)">Delete</button> 
+              <!-- <button @click="deleteTask(task.taskname)">Delete</button> -->
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
+    <!-- <div v-if="showDeleteModal" class="background-blur"></div> -->
+    <div :class="{ 'background-blur': showDeleteModal }"></div>
+    <div class="delete-modal" v-if="showDeleteModal">
+      <p>Do you want to delete this task?</p>
+      <form>
+    <input v-model="confirmationText"
+         @keydown.enter="confirmDelete" 
+         ref="confirmInput"
+         required
+         class="input-box"
+         placeholder="Type 'delete' to confirm" 
+         />
+    <div class="button-container">
+      <button @click="confirmDelete" class="centered-button">OK</button>
+      <button @click="cancelDelete" class="centered-button">Cancel</button>
+    </div>
+    </form>
+      </div>
+ 
         
   <section class="footer">
     <div class="footer-row">
@@ -69,17 +86,10 @@
       </div>
 
       <div class="footer-col">
-        <h4>Help</h4>
+        <h4>Info.</h4>
         <p>
-          This is a Random Task Generator. If you want help email us.
-        </p>
-        <form @submit.prevent="handleSubmit" class="custom-form">
-            <input v-model="email" type="email" placeholder="Your email" required class="input-field">
-            <button type="submit" class="submit-button">Submit</button>
-          </form>
-          <div v-if="emailSent" class="email-response">
-            Email sent! Thank you for reaching out.
-          </div>
+          This is a Random Task Generator. 
+            </p>
           <div class="icons">
           <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer">
           <i class="fab fa-linkedin"></i>
@@ -111,77 +121,65 @@ export default {
   components: {
     AppHeader
   },
+  created(){
+    this.fetchTaskData();
+    this.$store.dispatch('fetchTaskData');
+    console.log('Tasks:', this.tasks);
+    this.$store.dispatch('fetchTasks').then(() => {
+      this.tasks = this.$store.getters.getTaskData;
+    });
+  },
   data() {
     return {
       taskName: '',
-      task: [],
+      tasks: [],
       searchQuery: '',
-      taskIDCounter: 1,
-      taskAdded: false
+      // taskIdCounter: 1,
+      taskAdded: false,
+      feedbackMessage: "",
+      showDeleteModal: false,
+      confirmationText: "",
     };
   },
   computed: {
     ...mapActions(['addTaskToDatabase']),
-    taskList() {
+    ...mapState(['tasks']),
+    tasks(){
       return this.$store.getters.getTaskData;
     },
-  //   filteredTasks() {
-  //     return this.tasks.filter((task) => {
-  //       return (
-  //         (task.taskName && task.taskName.toLowerCase().includes(this.searchQuery.toLowerCase()))
-  //         );
-  //     }); 
-  //   },
-  // },
-  ...mapState(['tasks']),
-  filteredTasks() {
-    return Array.isArray(this.tasks)
-      ? this.tasks.filter(task => {
-          return task.taskName.toLowerCase().includes(this.searchQuery.toLowerCase());
-        })
-      : [];
-  }
-},
-  methods: {
-    handleSubmit() {
-      // Simulate email sending
-      console.log('Form submitted! Sending email response...');
-      // You can implement actual email sending logic here
-      this.emailSent = true;
-      window.location.reload();
-    },
-    performSearch() {
-      console.log('Performing search for:', this.searchQuery);
-    },
-
-    // deleteTask(taskId) {
-    //   this.deleteTaskFromDatabase(taskId);
-    // },
-
-    // addTask() {
-    //   if (this.taskName.trim() !== '') {
-    //     const newTask = {
-    //       id: this.taskIDCounter++, 
-    //       taskName: this.taskName
-    //     };
-    //     this.addTaskToDatabase(newTask);
-
-    //     this.taskAdded = true;
-    //     setTimeout(() => {
-    //       this.taskAdded = false;
-    //     }, 2000);
-
-    //     this.taskName = '';
-
-    //     this.$refs.taskInput.focus();
-    //     this.searchQuery = '';
+    // filteredTasks() {
+    //   console.log('Filtered tasks', this.tasks);
+    //   if (!Array.isArray(this.tasks)) {
+    //     console.error('this.tasks is not an array:', this.tasks);
+    //     return [];
     //   }
+    //   const lowerSearchQuery = this.searchQuery.toLowerCase();
+    //   return this.tasks.filter(task => {
+    //     return task.taskname.toLowerCase().includes(lowerSearchQuery);
+    //    });
     // },
-
+  },
+  methods: {
+    // performSearch() {
+    //   console.log('Performing search for:', this.searchQuery);
+    // },
+  //   performSearch() {
+  //   if (this.searchQuery.trim() === '') {
+  //     // If the search query is empty, show all tasks
+  //     this.filteredTasks = this.tasks;
+  //   } else {
+  //     const lowerSearchQuery = this.searchQuery.toLowerCase();
+  //     this.filteredTasks = this.tasks.filter(task => {
+  //       return task.taskname.toLowerCase().includes(lowerSearchQuery);
+  //     });
+  //   }
+  // },
     async fetchTaskData() {
       try {
-        const response = await axios.get("http://localhost:5000/api/add-task");
-        this.tasks = response.data; // Assuming the response structure is an array of users
+        const response = await axios.get("http://localhost:5000/api/tasks");
+        // this.$store.commit('setTasks', response.data);
+        this.tasks = response.data; 
+        console.log('Fetched data:', this.tasks);
       } catch (error) {
         console.error("Error fetching task data:", error);
       }
@@ -193,42 +191,155 @@ export default {
         };
 
         try {
-          await axios.post(
+          await this.$store.dispatch('addTask',newTask);
+
+        const response = await axios.post(
             "http://localhost:5000/api/add-task",
             newTask
           );
 
-          this.taskAdded = true;
+          if (response.data.success) {
+            this.taskAdded = true;
+            this.feedbackMessage = "Task added successfully!";
+          } else {
+            this.taskAdded = false;
+            this.feedbackMessage = "Task already added.";
+            setTimeout(() => {
+          // Reload the page after 6 seconds
+          window.location.reload();
+        }, 2000);
+          }
 
           setTimeout(() => {
-            this.taskAdded = false;
-          }, 2000);
+      this.taskAdded = false;
+      this.feedbackMessage = "";
+    }, 3000);
 
           this.taskName = "";
+  
 
-          this.fetchTaskData(); // Refresh the employee list after adding
-
+          await this.fetchTaskData(); 
+          await this.$store.dispatch('fetchTasks');
+           
           this.$refs.taskInput.focus();
           this.searchQuery = "";
         } catch (error) {
-          console.error("Error adding task:", error);
-        }
+      if (error.response && error.response.data) {
+        this.feedbackMessage = error.response.data.message || "Task already added.";   
+      } else {
+        this.feedbackMessage = "An error occurred while adding the task.";
+        
       }
-    },
-  
-    async deleteTask(id) {
+      console.error("Error adding task:", error);
+    }
+  } else {
+    this.feedbackMessage = "Please fill all the input fields.";
+  }
+},
+// async deleteTask(id) {
+//       this.showDeleteModal = true;
+//       const confirmDelete = async () => {
+//         if (this.confirmationText === "delete", "DELETE", "Delete") {
+//           try {
+//            await axios.delete(`http://localhost:5000/api/delete-task/${id}`);
+//             console.log("Deleted task with id:", id);
+//             // this.tasks = this.tasks.filter(task => task.id !== id);
+//             this.$store.commit('deleteTask', id);
+            // this.fetchTaskData();
+//             this.feedbackMessage = "Task deleted successfully";
+//           } catch (error) {
+//             console.error("Error deleting task:", error);
+//          }
+//           this.confirmationText = "";
+//           this.showDeleteModal = false;
+//         } else {
+//           this.feedbackMessage = "Please type 'delete' to confirm deletion.";
+//         }
+//         setTimeout(() => {
+//           this.feedbackMessage = "";
+//         }, 4000);
+//       };
+//       this.confirmDelete = confirmDelete;
+//     },
+//     cancelDelete() {
+//       this.confirmationText = "";
+//       this.showDeleteModal = false;
+//     },
+//   },
+// async deleteTask(id) {
+//     this.showDeleteModal = true;
+//     const confirmDelete = async () => {
+//       if (this.confirmationText === "delete" || this.confirmationText === "DELETE" || this.confirmationText === "Delete") {
+//         try {
+//           // Make an API call to delete the task from the database
+//           await axios.delete(`http://localhost:5000/api/delete-task/${id}`);
+//           console.log('Deleted task with id:', id);
+          
+//           // Commit the mutation to delete the task from the client-side store
+//           this.$store.dispatch('deleteTask', id);
+//           // this.fetchTaskData();
+
+//           // Close the delete modal and provide feedback
+//           this.confirmationText = '';
+//           this.showDeleteModal = false;
+//           this.feedbackMessage = "Task deleted successfully";
+
+//      // Clear the feedback message after a delay
+//      setTimeout(() => {
+//           this.feedbackMessage = '';
+//         }, 3000);
+//       } catch (error) {
+//         console.error('Error deleting task:', error);
+//         // Handle the error here
+//         this.feedbackMessage = "An error occurred while deleting the task.";
+//       }
+//     } else {
+//       this.feedbackMessage = "Please type 'delete' to confirm deletion.";
+//     }
+//   };
+
+//   this.confirmDelete = confirmDelete;
+// },
+// cancelDelete() {
+//   this.confirmationText = "";
+//   this.showDeleteModal = false;
+
+// },
+
+async deleteTask(id) {
+  this.showDeleteModal = true;
+
+  const confirmDelete = async () => {
+    if (this.confirmationText === "delete", "DELETE", "Delete") {
       try {
-        await axios.delete(`http://localhost:5000/api/add-task/${id}`);
-        console.log("Deleted task with id:", id);
-        this.fetchTaskData(); // Refresh the employee list after deleting
+        await axios.delete(`http://localhost:5000/api/delete-task/${id}`);
+        console.log('Deleted task with id:', id);
+        this.$store.dispatch('deleteTask', id);
+        this.fetchTaskData();
+        this.feedbackMessage = 'Task deleted successfully';
       } catch (error) {
-        console.error("Error deleting task:", error);
+        console.error('Error deleting task:', error);
       }
-    },
+      this.confirmationText = '';
+      this.showDeleteModal = false;
+    } else {
+      this.feedbackMessage = "Please type 'delete' to confirm deletion."
+    }
+       setTimeout(() => {
+        this.feedbackMessage = "";
+      }, 4000);
+    };
+    this.confirmDelete = confirmDelete;
+  },
+  cancelDelete() {
+    this.confirmationText = "";
+    this.showDeleteModal = false;
+  },
+
     async updateTask(updatedTask) {
       try {
         await axios.put(
-          `http://localhost:5000/api/add-task/${updatedTask.id}`,
+          `http://localhost:5000/api/update-task/${updatedTask.id}`,
           updatedTask
         );
         console.log("Updated task:", updatedTask);
@@ -237,18 +348,8 @@ export default {
         console.error("Error updating task:", error);
       }
     },
-
-    scrollToTask(id) {
-      const element = this.$refs[id];
-      if (element) {
-        element.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
-      }
-    }
   }
-};
+  };
 </script> 
 
 <style scoped>
@@ -258,7 +359,7 @@ export default {
 .feedback {
   color: green;
   margin-top: 10px;
-  animation: fadeOut 2s forwards;
+  animation: fadeOut 4s forwards;
 }
 
 @keyframes fadeOut {
@@ -282,26 +383,12 @@ export default {
   align-items: center;
 }
 
-.search-container {
-  width: 100%;
-  padding: 10px;
-  box-sizing: border-box;
-  margin-bottom: 10px;
-}
-
-.search-container input {
-  width: calc(100% - 40px);
-  padding: 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
 .container {
   max-width: 400px;
   margin: 20px auto;
   padding: 20px;
   border: 1px solid #ccc;
+  text-align: center;
   border-radius: 5px;
   background-color: #f7f7f7;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -327,6 +414,23 @@ export default {
 /* Style for the "Add Employee" button on hover */
 .container button:active {
   scale: 0.9;
+}
+
+.input-box::placeholder {
+  color: black; /* Set placeholder text color to black */
+}
+
+.form-group {
+  margin-bottom: 10px;
+}
+
+.input-box {
+  width: 70%;
+  padding: 10px;
+}
+
+button[type="submit"] {
+  padding: 10px 20px;
 }
 
 input[type=text],
@@ -387,10 +491,15 @@ tbody tr:hover {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  transition: all ease 0.2s;
 }
 
 .emptable td button:hover {
   background-color: #d32f2f;
+}
+
+.emptable td button:active {
+  scale: 0.9;
 }
 
 .footer {
@@ -405,7 +514,7 @@ tbody tr:hover {
   color: white;
    /* position: fixed; */
   bottom: 0; 
-  width: 100%;
+  width: auto;
   border-top: 1px solid #ccc;
 }
 
@@ -495,5 +604,79 @@ tbody tr:hover {
 .email-response {
   margin-top: 10px;
   color: green; /* Adjust color of the email response message */
+}
+
+.background-blur {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); /* Semi-transparent background overlay */
+  z-index: 999; /* Ensure it's above other content */
+  pointer-events: none; /* Disable interaction with the background blur */
+}
+
+
+/* Styles for the pop-up modal */
+.delete-modal {
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  padding: 20px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1000; /* Ensure it's above the blurred background */
+}
+
+/* Style the text and buttons within the modal */
+.delete-modal p {
+  margin-bottom: 10px;
+  font-size: 18px;
+  text-align: center;
+}
+
+.delete-modal input {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.delete-modal::placeholder {
+  color: black; /* Set placeholder text color to black */
+}
+
+/* Style the button container for the "OK" and "Cancel" buttons */
+.button-container {
+  display: flex;
+  justify-content: center;
+}
+
+/* Style the centered button within the modal */
+.centered-button {
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  margin: 4px;
+  transition: all ease 0.2s;
+}
+.centered-button:active {
+  scale: 0.9;
+}
+
+/* Style the "OK" and "Cancel" buttons */
+.centered-button:nth-child(2) {
+  background-color: #e74c3c; /* Red for the "OK" button */
+  color: #fff;
+}
+
+.centered-button:nth-child(3) {
+  background-color: #3498db; /* Blue for the "Cancel" button */
+  color: #fff;
 }
 </style>

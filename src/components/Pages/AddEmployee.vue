@@ -1,44 +1,36 @@
 <template>
   <div class="body-container">
     <AppHeader />
-    
-    <div class="search-container">
-      <input
-        type="text"
-        v-model="searchQuery"
-        placeholder="Search"
-        class="search-input"
-      />
-      <i class="fas fa-search" @click="performSearch"></i>
-    </div>
-
-    <div class="container">
-      <h1>Add Employee</h1>
+<div class="container">
+    <h1>Add Employee</h1>
+    <form @submit.prevent="addEmployee">
       <input
         type="text"
         v-model="employeeName"
         placeholder="Enter Employee Name"
-        @keydown.enter="addEmployee"
         ref="employeeInput"
-        required class="input-box"
+        required
+        class="input-box"
       />
-      <select v-model="employeeRole" placeholder="Role">
-        <option value="" disabled selected>Select Role</option>
+      <select v-model="employeeRole" required>
+        <option value="" disabled>Select Role</option>
         <option value="Intern">Intern</option>
         <option value="Contractor">Contractor</option>
         <option value="Employee">Employee</option>
       </select>
-      <button @click="addEmployee">Add Employee</button>
-      <p v-if="employeeAdded" class="feedback">Employee added successfully!</p> 
-      
+      <button type="submit">Add Employee</button>
+    </form>
+    <p v-if="feedbackMessage" class="feedback">{{ feedbackMessage }}</p>
+  
+
       <ul>
         <li
-          v-for="(user, index) in userList"
+          v-for="(employee, index) in filteredEmployees"
           :key="index"
-          :ref="user.id"
-          @click="scrollToEmployee(user.id)"
+          :ref="employee.id"
+          @click="scrollToEmployee(employee.id)"
         >
-          {{ user.id }} - {{ user.name }}
+          {{ employee.id }} - {{ employee.name }} - {{ employee.role }}
         </li>
       </ul>
     </div>
@@ -55,19 +47,38 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(employee, index) in employees" :key="index">
+          <tr v-if="employees.length === 0">
+            <td colspan="5">No data available</td>
+          </tr>
+          <tr v-for="(employee) in employees" :key="employee.id">
             <td>{{ employee.id }}</td>
             <td>{{ employee.name }}</td>
             <td>{{ formatDate(employee.date_added) }}</td>
             <td>{{ employee.role }}</td>
             <td>
-              <button @click="editUser(employee)">Edit</button>
-              <button @click="updateUser(employee)">Update</button>
-              <button @click="deleteUser(employee.id)">Delete</button>
+              <button @click="deleteEmployee(employee.id)">Delete</button>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <div :class="{ 'background-blur': showDeleteModal }"></div>
+   <div class="delete-modal" v-if="showDeleteModal">
+    <p>Do you want to delete this employee?</p>
+    <form>
+    <input v-model="confirmationText"
+         @keydown.enter="confirmDelete" 
+         ref="confirmInput"
+         required
+         class="input-box"
+         placeholder="Type 'delete' to confirm" 
+         />
+    <div class="button-container">
+      <button @click="confirmDelete" class="centered-button">OK</button>
+      <button @click="cancelDelete" class="centered-button">Cancel</button>
+    </div>
+    </form>
     </div>
 
   <section class="footer">
@@ -83,17 +94,10 @@
       </div>
 
       <div class="footer-col">
-        <h4>Help</h4>
+        <h4>Info.</h4>
         <p>
-          This is a Random Task Generator. If you want help email us.
+          This is a Random Task Generator. 
         </p>
-        <form @submit.prevent="handleSubmit" class="custom-form">
-            <input v-model="email" type="email" placeholder="Your email" required class="input-field">
-            <button type="submit" class="submit-button">Submit</button>
-          </form>
-          <div v-if="emailSent" class="email-response">
-            Email sent! Thank you for reaching out.
-          </div>
           <div class="icons">
           <a href="https://www.linkedin.com/" target="_blank" rel="noopener noreferrer">
           <i class="fab fa-linkedin"></i>
@@ -116,9 +120,8 @@
 
 <script>
 import AppHeader from "@/components/Header/AppHeader.vue";
-import { mapActions } from "vuex";
+import { mapActions, mapState } from "vuex";
 import axios from "axios";
-
 
 export default {
   name: "AddEmployee",
@@ -127,72 +130,49 @@ export default {
   },
   created() {
     this.fetchEmployeeData(); 
-    // this.$store.dispatch('fetchEmployees');
+    this.$store.dispatch('fetchEmployeeData');
+    console.log('Employees:', this.employees);
+    this.$store.dispatch('fetchEmployees').then(() => {
+      this.employees = this.$store.getters.getEmployeeData;
+    });
   },
   data() {
     return {
       employeeName: "",
       employeeRole: "",
-      users: [],
+      employees: [],
       searchQuery: "",
-      employeeIdCounter: 1,
       employeeAdded: false,
+      feedbackMessage: "",
+      showDeleteModal: false,
+      confirmationText: "",
     };
   },
   computed: {
     ...mapActions(["addEmployeeToDatabase"]),
+    ...mapState(['employees']),
     employees() {
       return this.$store.getters.getEmployeeData;
     },
-    filteredUsers() {
-      console.log('Filtered users:', this.users); 
-      if (!Array.isArray(this.users)) {
-        console.error('this.users is not an array:', this.users);
-        return [];
-      }
-
-      return this.users.filter((user) => {
-        return (
-          (user.name &&
-            user.name.toLowerCase().includes(this.searchQuery.toLowerCase())) ||
-          (user.date_added &&
-            user.date_added.toLowerCase().includes(this.searchQuery.toLowerCase())) ||
-          (user.role &&
-            user.role.toLowerCase().includes(this.searchQuery.toLowerCase()))
-        );
-      });
-    },
   },
+ 
   methods: {
-    
-    handleSubmit() {
-      console.log('Form submitted! Sending email response...');
-      this.emailSent = true;
-      window.location.reload();
-    },
   formatDate(dateString) {
     const date = new Date(dateString);
     return date.toLocaleDateString();
   },
 
-  editUser(user) {
-   
-      this.$store.commit('setEditUser', user);
+  editEmployee(employee) {
+      this.$store.commit('setEditEmployee', employee);
     },
 
     async fetchEmployeeData() {
   try {
-    const response = await axios.get("http://localhost:5000/api/employees");
-    console.log('Fetched data:', response.data); 
-    if (Array.isArray(response.data)) {
-      this.users = response.data;
-    } else {
-      console.error('Invalid data format:', response.data);
-      this.users = [];
-    }
+    const response = await axios.get("http://localhost:5000/api/employees"); 
+    this.employees = response.data; 
+    console.log('Fetched data:', this.employees);
   } catch (error) {
     console.error("Error fetching employee data:", error);
-    this.users = [];
   }
 },
     async addEmployee() {
@@ -202,21 +182,29 @@ export default {
           date_added: new Date().toISOString(),
           role: this.employeeRole,
         };
-
-
         try {
-          // await this.$store.dispatch('addEmployeeToDatabase', newEmployee);
+          await this.$store.dispatch('addEmployee', newEmployee);
 
-          await axios.post(
+          const response = await axios.post(
             "http://localhost:5000/api/add-employee",
             newEmployee
           );
 
-          this.employeeAdded = true;
+          if (response.data.success) {
+        this.employeeAdded = true;
+        this.feedbackMessage = "Employee added successfully!";
+      } else {
+        this.employeeAdded = false;
+        this.feedbackMessage = "Employee already added.";
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
 
           setTimeout(() => {
             this.employeeAdded = false;
-          }, 2000);
+            this.feedbackMessage = "";
+          }, 3000);
 
           this.employeeName = "";
           this.employeeRole = "";
@@ -227,15 +215,18 @@ export default {
           this.$refs.employeeInput.focus();
           this.searchQuery = "";
         } catch (error) {
-          console.error("Error adding employee:", error);
-        }
+      if (error.response && error.response.data) {
+        this.feedbackMessage = error.response.data.message || "An error occurred while adding the employee.";
+      } else {
+        this.feedbackMessage = "An error occurred while adding the employee.";
       }
-    },
-    performSearch() {
-      console.log("Performing search for:", this.searchQuery);
-    },
-
-    async updateUser(updatedEmployee) {
+      console.error("Error adding employee:", error);
+    }
+  } else {
+    this.feedbackMessage = "Please fill all the input fields.";
+  }
+},
+    async updateEmployee(updatedEmployee) {
       try {
         await axios.put(
           `http://localhost:5000/api/update-employee/${updatedEmployee.id}`,
@@ -249,16 +240,37 @@ export default {
       }
     },
 
-    async deleteUser(id) {
+    async deleteEmployee(id) {
+      this.showDeleteModal = true;
+
+      const confirmDelete = async () => {
+      if (this.confirmationText === "delete" || this.confirmationText === "DELETE" || this.confirmationText === "Delete") {
       try {
         await axios.delete(`http://localhost:5000/api/delete-employee/${id}`);
-        console.log("Deleted user with id:", id);
+        console.log("Deleted employee with id:", id);
+        this.$store.commit("deleteEmployee", id);
         this.fetchEmployeeData(); 
+        this.feedbackMessage = "Employee deleted successfully";
       } catch (error) {
         console.error("Error deleting employee:", error);
       }
-    },
+      this.confirmationText = '';
+      this.showDeleteModal = false;
+    } else {
+      this.feedbackMessage = "Please type 'delete' to confirm deletion."
+    }
+       setTimeout(() => {
+        this.feedbackMessage = "";
+      }, 4000);
+    };
+    this.confirmDelete = confirmDelete;
   },
+  cancelDelete() {
+    this.confirmationText = "";
+    this.showDeleteModal = false;
+  },
+
+},
 };
 
 </script>
@@ -270,7 +282,7 @@ export default {
 .feedback {
     color: green;
     margin-top: 10px;
-    animation: fadeOut 2s forwards;
+    animation: fadeOut 5s forwards;
   }
 
   @keyframes fadeOut {
@@ -283,7 +295,6 @@ export default {
   }
 .body-container {
   height: 130vh; 
-  /* overflow-y: auto; */
   display: flex;
   flex-direction: column;
 }
@@ -293,27 +304,11 @@ export default {
   align-items: center;
 }
 
-.search-container {
-  width: 100%;
-  padding: 10px;
-  box-sizing: border-box;
-  margin-bottom: 10px;
-}
-
-.search-container input {
-  width: 100%;
-  padding: 12px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
 .container {
   max-width: 400px;
   margin: 20px auto;
   padding:  25px;
-  /* text-align: center; */
-  /* align-items: center; */
+  text-align: center;
   border: 1px solid #ccc;
   border-radius: 5px;
   background-color: #f7f7f7;
@@ -329,6 +324,7 @@ export default {
   font-size: 16px;
   cursor: pointer;
   align-items: center;
+  text-align: center;
   background-color:  #007BFF;
   color: white;
   border: none; 
@@ -337,15 +333,27 @@ export default {
   transition: all ease 0.2s; 
  } 
 
-/* Style for the "Add Employee" button on hover */
+
  .container button:active {
   scale: 0.9;
 } 
 
 .input-box::placeholder {
-  color: black; /* Set placeholder text color to black */
+  color: black;
 }
 
+.form-group {
+  margin-bottom: 10px;
+}
+
+.input-box {
+  width: 70%;
+  padding: 10px;
+}
+
+button[type="submit"] {
+  padding: 10px 20px;
+}
 
 input[type=text],
 input[type=date],
@@ -363,6 +371,7 @@ button {
   font-size: 16px;
   cursor: pointer;
   align-items: center;
+
   
 }
 
@@ -409,12 +418,15 @@ tbody tr:hover {
   border: none;
   border-radius: 4px;
   cursor: pointer;
+  transition: all ease 0.2s;
 }
 
 .emptable td button:hover {
   background-color: #d32f2f;
 }
-
+.emptable td button:active {
+  scale: 0.9;
+}
 .footer {
   display: flex;
   justify-content: center;
@@ -425,9 +437,8 @@ tbody tr:hover {
   text-align: center;
   background-color: #333;
   color: white;
-   /* position: fixed; */
   bottom: 0; 
-  width: 100%;
+  width: auto;
   border-top: 1px solid #ccc;
 }
 
@@ -519,5 +530,79 @@ tbody tr:hover {
 .email-response {
   margin-top: 10px;
   color: green; 
+}
+
+
+.background-blur {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5); 
+  z-index: 999; 
+  pointer-events: none; 
+}
+
+
+
+.delete-modal {
+  position: fixed;
+  top: 30%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  padding: 20px;
+  border-radius: 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 1000; 
+}
+
+
+.delete-modal p {
+  margin-bottom: 10px;
+  font-size: 18px;
+  text-align: center;
+}
+
+.delete-modal input {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.delete-modal::placeholder {
+  color: black; 
+}
+
+
+.button-container {
+  display: flex;
+  justify-content: center;
+}
+
+.centered-button {
+  padding: 8px 16px;
+  font-size: 16px;
+  cursor: pointer;
+  margin: 4px;
+  transition: all ease 0.2s;
+}
+.centered-button:active {
+  scale: 0.9;
+}
+
+
+.centered-button:nth-child(2) {
+  background-color: #e74c3c; 
+  color: #fff;
+}
+
+.centered-button:nth-child(3) {
+  background-color: #3498db; 
+  color: #fff;
 }
 </style>

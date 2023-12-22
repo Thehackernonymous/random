@@ -25,15 +25,8 @@
       <div class="footer-col">
         <h4>Help</h4>
         <p>
-          This is a Random Task Generator. If you want help email us.
+          This is a Random Task Generator.
         </p>
-        <form @submit.prevent="handleSubmit" class="custom-form">
-            <input v-model="email" type="email" placeholder="Your email" required class="input-field">
-            <button type="submit" class="submit-button">Submit</button>
-          </form>
-          <div v-if="emailSent" class="email-response">
-            Email sent! Thank you for reaching out.
-          </div>
           <div class="icons">
           <a href="https://www.linkedin.com/in/rahul-jaiswal-66491122a/" target="_blank" rel="noopener noreferrer">
           <i class="fab fa-linkedin"></i>
@@ -130,7 +123,7 @@ export default {
   color: white;
    /* position: fixed; */
   bottom: 0; 
-  width: 100%;
+  width: auto;
   border-top: 1px solid #ccc;
 }
 
@@ -197,7 +190,7 @@ export default {
 }
 
 .input-field::placeholder {
-  color: white; /* Placeholder color */
+  color: black; /* Placeholder color */
 }
 
 .submit-button {

@@ -1,8 +1,8 @@
 <template>
   <div class="container">
-  <AppHeader />
+  <EmployeeHeader />
   <!-- </router-link> -->
-    <section class="about-us">
+    <section class="about-view">
       <div class="about">
         <img :src="require('@/assets/logo.png')" class="pic">
         <div class="text">
@@ -13,7 +13,7 @@
           </p>
           <div
            class="data">
-            <a href="/record-page" class="generate">Assign Task</a>
+            <a href="/employee-record" class="generate">See Records</a>
           </div>
         </div>
       </div>
@@ -25,10 +25,8 @@
       <div class="footer-col">
         <h4>Info</h4>
         <ul class="links">
-          <li><a href="/about-us">About Us</a></li>
-          <li><a href="/add-employee">Employee</a></li>
-          <li><a href="/add-task">Tasks</a></li>
-          <li><a href="/record-page">Records</a></li>
+          <li><a href="/employee-about">About Us</a></li>
+          <li><a href="/employee-record">Records</a></li>
         </ul>
       </div>
 
@@ -37,13 +35,6 @@
         <p>
           This is a Random Task Generator.
         </p>
-        <!-- <form @submit.prevent="handleSubmit" class="custom-form">
-            <input v-model="email" type="email" placeholder="Your email" required class="input-field">
-            <button type="submit" class="submit-button">Submit</button>
-          </form>
-          <div v-if="emailSent" class="email-response">
-            Email sent! Thank you for reaching out.
-          </div> -->
           <div class="icons">
           <a href="https://www.linkedin.com/in/rahul-jaiswal-66491122a/" target="_blank" rel="noopener noreferrer">
           <i class="fab fa-linkedin"></i>
@@ -66,13 +57,13 @@
 
 
   <script>
-  import AppHeader from '@/components/Header/AppHeader.vue';
+import EmployeeHeader from '@/components/Header/EmployeeHeader.vue';
 
 export default {
-  name: 'AboutUs',
+  name: 'EmployeeAbout',
 
   components: {
-    AppHeader,
+    EmployeeHeader,
   },
   
   }
@@ -93,7 +84,7 @@ export default {
 
 }
 
-.about-us {
+.about-view {
   height: 100vh;
   width: 100%;
   padding: 90px 0;
